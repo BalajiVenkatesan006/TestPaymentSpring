@@ -27,9 +27,9 @@ public class RedisRepositoryImplementation implements RedisRepository  {
     }
 
     @Override
-    public void addAccounttocache(Account account) {
-        String key = "accountNumber::"+account.getAccountNumber();
-        valueOperations.set(key,String.valueOf(account.getTotalAmount()));
+    public void addAccounttocache(String accountnumber,String totalAmount) {
+        String key = "accountNumber::"+accountnumber;
+        valueOperations.set(key,String.valueOf(totalAmount));
     }
 
     @Override

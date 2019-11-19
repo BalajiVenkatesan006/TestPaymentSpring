@@ -1,6 +1,8 @@
 package com.practise.demo.paymentdemo.controller;
 
 import com.practise.demo.paymentdemo.cache.RedisRepositoryImplementation;
+import com.practise.demo.paymentdemo.eventrabbitmq.EventProducer;
+import com.practise.demo.paymentdemo.eventrabbitmq.Notification;
 import com.practise.demo.paymentdemo.exception.ResourceNotFoundException;
 import com.practise.demo.paymentdemo.model.Account;
 import com.practise.demo.paymentdemo.model.UserAccount;
@@ -30,10 +32,10 @@ public class UserController {
     UserRepo userRepo;
 
     @Autowired
-    AccountRepo accountRepo;
+    EventProducer eventProducer;
 
     @Autowired
-    RedisRepositoryImplementation redisRepositoryImplementation;
+    AccountRepo accountRepo;
 
     @GetMapping("/users")
     @ResponseBody
@@ -60,7 +62,7 @@ public class UserController {
             account.setAccountNumber(accountNumber);
             account.setTotalAmount(Long.valueOf(0));
             accountRepo.save(account);
-            redisRepositoryImplementation.addAccounttocache(account);
+            eventProducer.sendMessage(new Notification("TotalAmountChange",account.getAccountNumber(),account.getTotalAmount().toString()));
         }
         return savedUser;
     }

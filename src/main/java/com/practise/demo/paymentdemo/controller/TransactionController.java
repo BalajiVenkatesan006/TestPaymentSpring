@@ -3,6 +3,8 @@ package com.practise.demo.paymentdemo.controller;
 import com.practise.demo.paymentdemo.Response.ServerResponse;
 import com.practise.demo.paymentdemo.cache.RedisRepositoryImplementation;
 import com.practise.demo.paymentdemo.common.TypeEnum;
+import com.practise.demo.paymentdemo.eventrabbitmq.EventProducer;
+import com.practise.demo.paymentdemo.eventrabbitmq.Notification;
 import com.practise.demo.paymentdemo.model.Account;
 import com.practise.demo.paymentdemo.model.Transaction;
 import com.practise.demo.paymentdemo.model.UserAccount;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.persistence.criteria.From;
 import javax.validation.Valid;
 
 @RestController
@@ -33,7 +36,7 @@ public class TransactionController {
     AccountRepo accountRepo;
 
     @Autowired
-    RedisRepositoryImplementation redisRepositoryImplementation;
+    EventProducer eventProducer;
 
     @PostMapping("/paydata")
     public ServerResponse pay(@Valid  @RequestBody Transaction transaction){
@@ -51,7 +54,7 @@ public class TransactionController {
                 transactionRepo.save(transaction);
                 toaccount.setTotalAmount(toaccount.getTotalAmount()+transaction.getTransactionAmount());
                 accountRepo.save(toaccount);
-                redisRepositoryImplementation.addAccounttocache(toaccount);
+                eventProducer.sendMessage(new Notification("TotalAmountChange",toaccount.getAccountNumber(),toaccount.getTotalAmount().toString()));
                 return new ServerResponse(true,"Transaction Complete success fully Transaction Id is :  "+transaction.getTransactionId());
             }
             else{
@@ -70,9 +73,9 @@ public class TransactionController {
                     Fromaccount.setTotalAmount(Fromaccount.getTotalAmount()-transaction.getTransactionAmount());
                     toaccount.setTotalAmount(toaccount.getTotalAmount()+transaction.getTransactionAmount());
                     accountRepo.save(Fromaccount);
+                    eventProducer.sendMessage(new Notification("TotalAmountChange", Fromaccount.getAccountNumber(),Fromaccount.getTotalAmount().toString()));
                     accountRepo.save(toaccount);
-                    redisRepositoryImplementation.addAccounttocache(Fromaccount);
-                    redisRepositoryImplementation.addAccounttocache(toaccount);
+                    eventProducer.sendMessage(new Notification("TotalAmountChange", toaccount.getAccountNumber(),toaccount.getTotalAmount().toString()));
                     return new ServerResponse(true,"Transaction Complete success fully Transaction Id is :  "+transaction.getTransactionId());
                 }
                 else{
@@ -84,7 +87,7 @@ public class TransactionController {
                 transactionRepo.save(transaction);
                 Fromaccount.setTotalAmount(Fromaccount.getTotalAmount()+transaction.getTransactionAmount());
                 accountRepo.save(Fromaccount);
-                redisRepositoryImplementation.addAccounttocache(Fromaccount);
+                eventProducer.sendMessage(new Notification("TotalAmountChange",Fromaccount.getAccountNumber(),Fromaccount.getTotalAmount().toString()));
                 return new ServerResponse(true,"Transaction Complete success fully Transaction Id is :  "+transaction.getTransactionId());
             }
         }
@@ -93,9 +96,5 @@ public class TransactionController {
         }
         return new ServerResponse(false,"Server Error ");
 
-    }
-    @Cacheable(value = "accountNumber",key = "#account.accountNumber")
-    public Account cacheThisAccount(Account account){
-        return account;
     }
 }
